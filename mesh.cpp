@@ -3,6 +3,7 @@
 #include <iostream>
 #include "mesh.h"
 #include "math.h"
+#include <threads.h>
 
 face::face(vec1d const& a, vec1d const& b)
 {
@@ -27,22 +28,44 @@ cell::cell()
     x = 0, y = 0;
 }
 
-cell::cell(vec1i nodes, vec2d const& all_nodes)
+cell::cell(vec1ui nodes, vec2d const& all_nodes)
 {
-    for(auto const& node : nodes)
+    std::vector<double> X,Y;
+    X.reserve(4);
+    Y.reserve(4);
+
+    for(int i = 0; i < 4; i++)
     {
-        x += 0.25*all_nodes[node][0];
-        y += 0.25*all_nodes[node][1];
+        X[i] = all_nodes[nodes[i]][0];
+        Y[i] = all_nodes[nodes[i]][1];
+
+        x += 0.25*X[i];
+        y += 0.25*Y[i];
     }
 
+    V = 0.5*abs( (X[1] - X[0]) * (Y[2] - Y[1]) - (Y[1] - Y[0]) * (X[2] - X[1]) )
+      + 0.5*abs( (X[3] - X[2]) * (Y[0] - Y[3]) - (X[0] - X[3]) * (Y[3] - Y[2]) ); 
+}
+
+mesh::mesh()
+{
+    import_mesh();
 }
 
 mesh::mesh(std::string path)
 {
+    name = path.substr(0,path.find('.'));
+    std::cout << "Loading mesh: " << name << "\n";
+
     load_mesh(path,nodes,edges,quads);
+    N_cells = quads.size();
     construct_ghost_cells();
+    N_ghosts = quads.size() - N_cells;
     sort_mesh();
-    
+    N_walls = walls.size();
+    construct_cells();
+    std::cout << "Mesh loaded, number of walls: " << N_walls << " , number of cells: " 
+              << N_cells << " number of ghosts: " << N_ghosts << "\n";
 }
 
 void mesh::load_mesh(std::string path, vec2d& nodes, vec2ui& edges, vec2ui& quads)
@@ -244,10 +267,14 @@ void mesh::construct_ghost_cells()
      int i = 0;
      for(auto const& edge : edges)
      {  
-         ghost_quads.push_back(std::vector<unsigned int>{edge[0],edge[1],edge[0],edge[1]});  
-         ghost_cell_idx.push_back(i+quads_offset);
-         ghost_cell_val.push_back(edge.back());
-         i++;
+        if(edge.back() != -1)
+        {
+            ghost_quads.push_back(std::vector<unsigned int>{edge[0],edge[1],edge[0],edge[1]});  
+            ghost_cell_idx.push_back(i+quads_offset);
+            ghost_cell_val.push_back(edge.back());
+            i++;
+        }
+         
      }
 
      quads.insert(quads.end(),ghost_quads.begin(),ghost_quads.end());
@@ -281,5 +308,26 @@ void mesh::sort_mesh()
 
 void mesh::construct_cells()
 {
-    
+    for(auto const& quad : quads)
+    {
+        cells.push_back(cell(quad, nodes));
+    }
+}
+
+void mesh::export_mesh()
+{
+    std::ofstream f("mesh/" + name + "_walls");
+
+    for(auto const& wall : walls)
+    {
+        f << wall.xf << " " << wall.yf << "\n\n";
+    }
+
+    f.close();
+
+}
+
+void mesh::import_mesh()
+{
+
 }
