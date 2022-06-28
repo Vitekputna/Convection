@@ -47,6 +47,12 @@ cell::cell(vec1ui nodes, vec2d const& all_nodes)
       + 0.5*abs( (X[3] - X[2]) * (Y[0] - Y[3]) - (X[0] - X[3]) * (Y[3] - Y[2]) ); 
 }
 
+void cell::add_cell_wall(unsigned int wall_idx)
+{
+    cell_walls[free_wall_slot_idx] = wall_idx;
+    free_wall_slot_idx++;
+}
+
 mesh::mesh()
 {
     import_mesh();
@@ -61,9 +67,10 @@ mesh::mesh(std::string path)
     N_cells = quads.size();
     construct_ghost_cells();
     N_ghosts = quads.size() - N_cells;
+    construct_cells();
     sort_mesh();
     N_walls = walls.size();
-    construct_cells();
+    
     std::cout << "Mesh loaded, number of walls: " << N_walls << " , number of cells: " 
               << N_cells << " number of ghosts: " << N_ghosts << "\n";
 }
@@ -269,7 +276,7 @@ void mesh::construct_ghost_cells()
      {  
         if(edge.back() != -1)
         {
-            ghost_quads.push_back(std::vector<unsigned int>{edge[0],edge[1],edge[0],edge[1]});  
+            ghost_quads.push_back(std::vector<unsigned int>{edge[0],edge[1],edge[0],edge[1]});
             ghost_cell_idx.push_back(i+quads_offset);
             ghost_cell_val.push_back(edge.back());
             i++;
@@ -287,6 +294,7 @@ void mesh::sort_mesh()
     std::vector<std::vector<int>> node_idx = {{0,1},{1,2},{2,3},{3,0}};
     std::vector<int> node_vec;
 
+    unsigned int wall_idx = 0;
     for(unsigned int c_idx = 0; c_idx < quads.size(); c_idx++)
     {
         for(unsigned int w = 0; w < 4; w++)
@@ -301,6 +309,9 @@ void mesh::sort_mesh()
             if(wall_uniqueness(wall) && neighbour != -1)
             {
                 walls.push_back(wall);
+                cells[c_idx].add_cell_wall(wall_idx);
+                cells[neighbour].add_cell_wall(wall_idx);
+                wall_idx++;
             }
         }
     }
@@ -316,14 +327,23 @@ void mesh::construct_cells()
 
 void mesh::export_mesh()
 {
-    std::ofstream f("mesh/" + name + "_walls");
-
+    std::ofstream f("mesh/" + name + "_walls.txt");
     for(auto const& wall : walls)
     {
-        f << wall.xf << " " << wall.yf << "\n\n";
+        f << wall.xf << " " << wall.yf << " " << wall.S << "\n";
+        f << wall.n[0] << " " << wall.n[1] << "\n";
+        f << wall.s[0] << " " << wall.s[1] << "\n";
+        f << wall.owner_cell_index << " " << wall.neigbour_cell_index << "\n\n";
     }
-
     f.close();
+
+    std::ofstream ff("mesh/" + name + "_cells.txt");
+    for(auto const& cell : cells)
+    {
+        ff << cell.x << " " << cell.y << " " << cell.V << "\n";
+        ff << cell.cell_walls[0] << " " << cell.cell_walls[1] << " " << cell.cell_walls[2] << " " << cell.cell_walls[3] << "\n\n";
+    }
+    ff.close();
 
 }
 

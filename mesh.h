@@ -23,9 +23,11 @@ class cell
     public:
     double x = 0, y = 0, V;
     unsigned int cell_walls[4];
+    unsigned char free_wall_slot_idx = 0;
 
     cell();
     cell(vec1ui nodes,vec2d const& all_nodes);
+    void add_cell_wall(unsigned int wall_idx);
 };
 
 typedef std::vector<cell> cell_vec;
