@@ -16,6 +16,7 @@ class face
     double n[2], s[2];
     int owner_cell_index, neigbour_cell_index;
     face(vec1d const& a, vec1d const& b);
+    face();
 };
 
 class cell
@@ -48,7 +49,7 @@ class mesh
     vec1i ghost_cell_idx;
     vec1i ghost_cell_val;
 
-    int N_cells, N_walls, N_ghosts;
+    unsigned int N_cells, N_walls, N_ghosts, N;
     
     mesh();
     mesh(std::string path);
@@ -61,8 +62,10 @@ class mesh
     void construct_ghost_cells();
     void construct_cells();
 
+    std::vector<double> extract(std::string& text);
+
     void export_mesh();
     void import_mesh();
 
-
+    
 };

@@ -1,6 +1,7 @@
 #include <fstream>
 #include <vector>
 #include <iostream>
+#include <string>
 #include "mesh.h"
 #include "math.h"
 #include <threads.h>
@@ -22,6 +23,8 @@ face::face(vec1d const& a, vec1d const& b)
     s[0] = sx;
     s[1] = sy;
 }
+
+face::face(){}
 
 cell::cell()
 {
@@ -70,15 +73,16 @@ mesh::mesh(std::string path)
     construct_cells();
     sort_mesh();
     N_walls = walls.size();
+    N = quads.size();
     
     std::cout << "Mesh loaded, number of walls: " << N_walls << " , number of cells: " 
-              << N_cells << " number of ghosts: " << N_ghosts << "\n";
+              << N_cells << " number of ghosts: " << N_ghosts << "\n\n";
 }
 
 void mesh::load_mesh(std::string path, vec2d& nodes, vec2ui& edges, vec2ui& quads)
 {
     std::ifstream file(path);
-    std::cout << "Warning: This reader takes in gmsh format, counting from 1 not zero!!!\n\n";
+    std::cout << "Warning: This reader takes in gmsh format, counting from 1 not zero!!!\n";
 	
 	if(file.fail())
 	{
@@ -328,26 +332,140 @@ void mesh::construct_cells()
 void mesh::export_mesh()
 {
     std::ofstream f("mesh/" + name + "_walls.txt");
+    f << N_walls << "\n";
     for(auto const& wall : walls)
     {
         f << wall.xf << " " << wall.yf << " " << wall.S << "\n";
         f << wall.n[0] << " " << wall.n[1] << "\n";
         f << wall.s[0] << " " << wall.s[1] << "\n";
-        f << wall.owner_cell_index << " " << wall.neigbour_cell_index << "\n\n";
+        f << wall.owner_cell_index << " " << wall.neigbour_cell_index << "\n";
     }
     f.close();
 
     std::ofstream ff("mesh/" + name + "_cells.txt");
+    ff << N_cells << " " << N_ghosts << "\n";
     for(auto const& cell : cells)
     {
         ff << cell.x << " " << cell.y << " " << cell.V << "\n";
-        ff << cell.cell_walls[0] << " " << cell.cell_walls[1] << " " << cell.cell_walls[2] << " " << cell.cell_walls[3] << "\n\n";
+        ff << cell.cell_walls[0] << " " << cell.cell_walls[1] << " " << cell.cell_walls[2] << " " << cell.cell_walls[3] << "\n";
     }
     ff.close();
 
 }
 
+std::vector<double> mesh::extract(std::string& text)
+{
+    std::string word;
+    std::vector<double> res;
+
+    for (unsigned int j = 0; j < text.length(); j++)
+    {
+        if (text[j] != 32)
+        {
+            while (text[j] != 32 && j < text.length())
+            {
+                word.push_back(text[j]);
+                j++;
+            }
+            res.push_back(std::stod(word));
+            word = "";
+        }
+    }
+    
+    return res;
+}
+
 void mesh::import_mesh()
 {
+    std::ifstream file("mesh/" + name +"_cells.txt");
+
+    if(file.fail())
+	{
+		std::cout << "//////////////////////////////////// \n";
+		std::cout << "File not found \n";
+		std::cout << "//////////////////////////////////// \n";
+		throw std::exception();
+	}
+
+    std::string text;
+
+    std::getline(file,text);
+
+    std::vector<std::string> text_vec;
+    std::vector<double> double_vec;
+
+    double_vec = extract(text);
+
+    N_cells = uint(double_vec[0]);
+    N_ghosts = uint(double_vec[1]);
+
+    for(unsigned int i = 0; i < N_cells + N_ghosts; i++)
+    {
+        cell C;
+
+        std::getline(file, text);
+        double_vec = extract(text);
+        C.x = double_vec[0];
+        C.y = double_vec[1];
+        C.V = double_vec[2];
+
+        std::getline(file, text);
+        double_vec = extract(text);
+        C.cell_walls[0] = double_vec[0];
+        C.cell_walls[1] = double_vec[1];
+        C.cell_walls[2] = double_vec[2];
+        C.cell_walls[3] = double_vec[3];
+
+        cells.push_back(C);
+    }
+
+    file.close();
+
+    std::ifstream f("mesh/" + name +"_walls.txt");
+
+    if(f.fail())
+	{
+		std::cout << "//////////////////////////////////// \n";
+		std::cout << "File not found \n";
+		std::cout << "//////////////////////////////////// \n";
+		throw std::exception();
+	}
+
+    std::getline(f,text);
+
+    double_vec = extract(text);
+
+    N_walls = uint(double_vec[0]);
+
+    for(unsigned int i = 0; i < N_walls; i++)
+    {
+        face C;
+
+        std::getline(f, text);
+        double_vec = extract(text);
+        C.xf = double_vec[0];
+        C.yf = double_vec[1];
+        C.S  = double_vec[2];
+
+        std::getline(f, text);
+        double_vec = extract(text);
+        C.n[0] = double_vec[0];
+        C.n[1] = double_vec[1];
+
+        std::getline(f, text);
+        double_vec = extract(text);
+        C.s[0] = double_vec[0];
+        C.s[1] = double_vec[1];
+
+        std::getline(f, text);
+        double_vec = extract(text);
+        C.owner_cell_index = double_vec[0];
+        C.neigbour_cell_index = double_vec[1];
+
+        walls.push_back(C);
+    }
+
+    file.close();
+
 
 }
