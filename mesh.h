@@ -25,6 +25,7 @@ class cell
     double x = 0, y = 0, V;
     unsigned int cell_walls[4];
     unsigned char free_wall_slot_idx = 0;
+    int owner_idx[4] = {-1,-1,-1,-1};
 
     cell();
     cell(vec1ui nodes,vec2d const& all_nodes);
@@ -61,6 +62,7 @@ class mesh
     bool wall_uniqueness(face const& new_wall);
     void construct_ghost_cells();
     void construct_cells();
+    void set_owner_idx();
 
     std::vector<double> extract(std::string& text);
 

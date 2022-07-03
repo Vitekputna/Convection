@@ -72,6 +72,7 @@ mesh::mesh(std::string path)
     N_ghosts = quads.size() - N_cells;
     construct_cells();
     sort_mesh();
+    set_owner_idx();
     N_walls = walls.size();
     N = quads.size();
     
@@ -310,14 +311,36 @@ void mesh::sort_mesh()
             wall.owner_cell_index = c_idx;
             wall.neigbour_cell_index = neighbour;
 
+            
+
             if(wall_uniqueness(wall) && neighbour != -1)
             {
                 walls.push_back(wall);
+                //cells[c_idx].owner_idx[cells[c_idx].free_wall_slot_idx] = 1;    
                 cells[c_idx].add_cell_wall(wall_idx);
+                
                 cells[neighbour].add_cell_wall(wall_idx);
                 wall_idx++;
             }
         }
+    }
+}
+
+void mesh::set_owner_idx()
+{
+    int i = 0;
+    for(auto& cell : cells)
+    {
+        int j = 0;
+        for(auto const& w : cell.cell_walls)
+        {
+            if(walls[w].owner_cell_index == i)
+            {
+                cell.owner_idx[j] = 1;
+            }
+            j++;
+        }
+        i++;
     }
 }
 
